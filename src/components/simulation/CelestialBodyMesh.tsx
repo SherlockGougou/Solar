@@ -13,7 +13,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { CelestialBody } from '../../data/celestial-bodies';
-import { computeRenderRadius } from '../../utils/units';
+import { computeRenderRadius, applySizeScaleFactor, getSunGlowScale } from '../../utils/units';
 import { computeRotationAngle } from '../../simulation/astronomy/rotation';
 import { useSimulationStore } from '../../simulation/state/simulation-store';
 
@@ -72,7 +72,7 @@ function RimGlowMaterial({ color, intensity = 0.6 }: { color: string; intensity?
  * Sun corona glow - a larger transparent sphere with additive blending
  * that simulates a bloom/corona effect around the Sun.
  */
-function SunGlow({ radius, color }: { radius: number; color: string }) {
+function SunGlow({ radius, color, glowScale = 2.5 }: { radius: number; color: string; glowScale?: number }) {
   const uniforms = useMemo(
     () => ({
       glowColor: { value: new THREE.Color(color) },
@@ -82,7 +82,7 @@ function SunGlow({ radius, color }: { radius: number; color: string }) {
 
   return (
     <mesh>
-      <sphereGeometry args={[radius * 2.5, 32, 32]} />
+      <sphereGeometry args={[radius * glowScale, 32, 32]} />
       <shaderMaterial
         uniforms={uniforms}
         transparent
@@ -122,12 +122,18 @@ export default function CelestialBodyMesh({ body, worldPosition, onClick }: Prop
   const meshRef = useRef<THREE.Mesh>(null);
 
   const bodySizeMultiplier = useSimulationStore((s) => s.bodySizeMultiplier);
-  const renderRadius = computeRenderRadius(body.radiusKm, bodySizeMultiplier);
+
+  const isEmissive = body.display.emissive ?? false;
+
+  // Apply diminishing-returns scaling for large bodies (Sun) in non-realistic modes
+  const effectiveMultiplier = applySizeScaleFactor(bodySizeMultiplier, body.radiusKm);
+  const renderRadius = computeRenderRadius(body.radiusKm, effectiveMultiplier);
+
+  // Adaptive corona glow for the Sun: shrinks inversely with multiplier
+  const sunGlowScale = isEmissive ? getSunGlowScale(bodySizeMultiplier) : 2.5;
 
   // Minimum visible radius so planets are clickable
   const effectiveRadius = Math.max(renderRadius, 0.003);
-
-  const isEmissive = body.display.emissive ?? false;
 
   // Animate rotation each frame
   useFrame(() => {
@@ -178,7 +184,7 @@ export default function CelestialBodyMesh({ body, worldPosition, onClick }: Prop
 
       {/* Rim glow - visible edge lighting for all bodies */}
       {isEmissive ? (
-        <SunGlow radius={effectiveRadius} color={body.display.glowColor ?? body.display.color} />
+        <SunGlow radius={effectiveRadius} color={body.display.glowColor ?? body.display.color} glowScale={sunGlowScale} />
       ) : (
         <mesh scale={1.15}>
           <sphereGeometry args={[effectiveRadius, 32, 32]} />
