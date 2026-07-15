@@ -44,7 +44,7 @@ export default function OrbitLine({ orbit, bodyId, color = '#ffffff' }: Props) {
   // Update opacity on selection change
   useFrame(() => {
     if (!lineRef.current) return;
-    const mat = lineRef.current.material as THREE.LineMaterial;
+    const mat = lineRef.current.material as THREE.Material & { opacity: number };
     if (!mat) return;
     const sel = useSimulationStore.getState().selectedBodyId;
     mat.opacity = sel === bodyId ? OPACITY_SELECTED : OPACITY_NORMAL;

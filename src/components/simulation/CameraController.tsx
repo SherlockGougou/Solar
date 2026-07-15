@@ -20,8 +20,6 @@ import { CELESTIAL_BODIES } from '../../data/celestial-bodies';
 import { computeOrbitalPosition } from '../../simulation/astronomy/orbital-elements';
 import { computeRenderPosition, computeRenderRadius } from '../../utils/units';
 
-/** Initial camera position — used by reset */
-const INITIAL_CAM_POS = new THREE.Vector3(50, 30, 50);
 
 interface FocusTarget {
   position: THREE.Vector3;
@@ -47,8 +45,6 @@ export default function CameraController() {
   const prevMode = useRef<CameraMode>('free');
   const transitionProgress = useRef(1);
   const targetLookAt = useRef(new THREE.Vector3());
-  const resetRequested = useRef(false);
-
   const getFocusTarget = useCallback((): FocusTarget | null => {
     const state = useSimulationStore.getState();
     const bodyId = state.selectedBodyId;
